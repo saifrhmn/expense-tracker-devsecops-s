@@ -1,0 +1,36 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: expense_tracker
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - expense-net
+  backend:
+    image: ${DOCKERHUB_USERNAME}/expense-backend:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URI: mongodb://mongo:27017/expense_tracker
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    depends_on:
+      - mongo
+    networks:
+      - expense-net
+  frontend:
+    image: ${DOCKERHUB_USERNAME}/expense-frontend:${IMAGE_TAG}
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+    networks:
+      - expense-net
+volumes:
+  mongo-data:
+networks:
+  expense-net:
+    driver: bridge

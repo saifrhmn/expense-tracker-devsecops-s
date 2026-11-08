@@ -1,0 +1,153 @@
+name: Expense Tracker - CI Security CD
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  quality:
+    name: Lint and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Backend install, lint and tests
+        working-directory: backend
+        env:
+          NODE_ENV: test
+        run: |
+          npm install --include=dev
+          npm run lint
+          npm test
+      - name: Frontend install, lint, tests and build validation
+        working-directory: frontend
+        run: |
+          npm install --include=dev
+          npm run lint
+          npm test
+          npm run build
+
+  trivy-repository:
+    name: Trivy repository CRITICAL scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan dependencies, misconfiguration and secrets
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: false
+          format: table
+
+  image-build-scan-push:
+    name: Build, scan images and push Docker Hub
+    needs: [quality, trivy-repository]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t expense-backend:ci ./backend
+      - name: Build frontend image
+        run: docker build -t expense-frontend:ci ./frontend
+      - name: Trivy backend image - CRITICAL only
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: expense-backend:ci
+          scanners: vuln
+          severity: CRITICAL
+          exit-code: '1'
+          format: table
+      - name: Trivy frontend image - CRITICAL only
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: expense-frontend:ci
+          scanners: vuln
+          severity: CRITICAL
+          exit-code: '1'
+          format: table
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Tag and push immutable commit images
+        env:
+          HUB_USER: ${{ vars.DOCKERHUB_USERNAME }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$HUB_USER"
+          docker tag expense-backend:ci "$HUB_USER/expense-backend:$COMMIT"
+          docker tag expense-frontend:ci "$HUB_USER/expense-frontend:$COMMIT"
+          docker push "$HUB_USER/expense-backend:$COMMIT"
+          docker push "$HUB_USER/expense-frontend:$COMMIT"
+
+  deploy:
+    name: CD - Deploy to EC2
+    needs: image-build-scan-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: expense-tracker-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure SSH with verified server fingerprint
+        env:
+          EC2_HOST: ${{ vars.EC2_HOST }}
+          EC2_USER: ${{ vars.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST_FINGERPRINT: ${{ vars.EC2_HOST_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          test -n "$EC2_HOST" && test -n "$EC2_USER" && test -n "$EC2_SSH_KEY" && test -n "$EC2_HOST_FINGERPRINT"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/id_ec2
+          chmod 600 ~/.ssh/id_ec2
+          ssh-keyscan -T 15 -t ed25519 "$EC2_HOST" > ~/.ssh/known_hosts
+          test -s ~/.ssh/known_hosts
+          ACTUAL="$(ssh-keygen -lf ~/.ssh/known_hosts -E sha256 | awk '{print $2}')"
+          test "$ACTUAL" = "$EC2_HOST_FINGERPRINT" || { echo 'EC2 SSH fingerprint mismatch'; exit 1; }
+          chmod 600 ~/.ssh/known_hosts
+      - name: Upload production Compose file
+        env:
+          EC2_HOST: ${{ vars.EC2_HOST }}
+          EC2_USER: ${{ vars.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=yes "$EC2_USER@$EC2_HOST" 'mkdir -p ~/expense-tracker'
+          scp -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=yes docker-compose.prod.yml "$EC2_USER@$EC2_HOST:expense-tracker/docker-compose.prod.yml"
+      - name: Deploy images and verify health
+        env:
+          EC2_HOST: ${{ vars.EC2_HOST }}
+          EC2_USER: ${{ vars.EC2_USER }}
+          HUB_USER: ${{ vars.DOCKERHUB_USERNAME }}
+          IMAGE_TAG: ${{ github.sha }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Token travels over the authenticated, encrypted SSH channel via stdin.
+          printf '%s\n' "$DOCKERHUB_TOKEN" | ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=yes \
+            "$EC2_USER@$EC2_HOST" "docker login -u '$HUB_USER' --password-stdin"
+          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=yes "$EC2_USER@$EC2_HOST" \
+            "cd ~/expense-tracker && DOCKERHUB_USERNAME='$HUB_USER' IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.prod.yml pull && DOCKERHUB_USERNAME='$HUB_USER' IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.prod.yml up -d --remove-orphans"
+          for attempt in $(seq 1 30); do
+            if ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=yes "$EC2_USER@$EC2_HOST" \
+              'curl --fail --silent --show-error --max-time 5 http://127.0.0.1/api/health' ; then
+              echo 'Deployment health check passed'
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Health check failed after 150 seconds'
+          exit 1
