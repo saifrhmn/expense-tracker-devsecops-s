@@ -59,7 +59,7 @@ jobs:
       - name: Build frontend image
         run: docker build -t expense-frontend:ci ./frontend
       - name: Trivy backend image - CRITICAL only
-        uses: aquasecurity/trivy-action@0.36.1
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: expense-backend:ci
           scanners: vuln
@@ -67,7 +67,7 @@ jobs:
           exit-code: '1'
           format: table
       - name: Trivy frontend image - CRITICAL only
-        uses: aquasecurity/trivy-action@0.36.1
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: expense-frontend:ci
           scanners: vuln
