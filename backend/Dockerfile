@@ -1,5 +1,8 @@
 FROM node:22-alpine
 
+# Update npm to a patched version
+RUN npm install -g npm@10.9.9
+
 WORKDIR /app
 
 COPY package*.json ./
