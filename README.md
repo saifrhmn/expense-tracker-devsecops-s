@@ -103,7 +103,7 @@ Repository → **Settings → Secrets and variables → Actions**.
 | Name | GitHub type | Example / what to enter |
 |---|---|---|
 | `EC2_HOST` | Variable | `ec2-xx-xx-xx-xx.compute.amazonaws.com` or public IP |
-| `EC2_USER` | Variable | `ubuntu` |
+| `EC2_USER` | Variable | `ubuntu` | 
 | `EC2_SSH_KEY` | Secret | **Complete PEM/OpenSSH private key contents**, including BEGIN/END lines |
 | `EC2_HOST_FINGERPRINT` | Variable | Verified `SHA256:...` ED25519 host key fingerprint |
 | `DOCKERHUB_USERNAME` | Variable | Your Docker Hub username |
