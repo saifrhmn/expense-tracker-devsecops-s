@@ -52,6 +52,7 @@ jobs:
     needs: [quality, trivy-repository]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: production  # ADD THIS LINE
     steps:
       - uses: actions/checkout@v4
       - name: Build backend image
