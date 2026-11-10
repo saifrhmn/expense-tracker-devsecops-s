@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1520" viewBox="0 0 1200 1520" role="img" aria-label="Expense Tracker Pipeline Map">
+  <style>
+    text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #17202a; }
+    .title { font-size: 34px; font-weight: 800; }
+    .subtitle { font-size: 16px; fill: #5b6774; }
+    .stage { font-size: 13px; font-weight: 700; letter-spacing: 1.5px; fill: #5b6774; }
+    .h { font-size: 18px; font-weight: 700; }
+    .job { font-family: Consolas, "Courier New", monospace; font-size: 14px; }
+    .t { font-size: 15px; }
+    .m { font-family: Consolas, "Courier New", monospace; font-size: 13px; fill: #3d4955; }
+    .sh { font-size: 15px; font-weight: 700; }
+    .gate { font-size: 14px; font-weight: 700; fill: #b4231b; }
+    .pill { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+    .note { font-size: 13px; fill: #5b6774; font-style: italic; }
+    .leg { font-size: 13px; fill: #5b6774; }
+  </style>
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b8794"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="1520" fill="#f3f5f7"/>
+
+  <!-- Header -->
+  <text x="100" y="62" class="title">Expense Tracker Pipeline Map</text>
+  <text x="100" y="92" class="subtitle">.github/workflows/devsecops.yml · how a git push becomes a running app on AWS EC2</text>
+  <g transform="translate(100,122)">
+    <rect width="12" height="12" rx="3" fill="#2459c7"/><text x="20" y="11" class="leg">CI job (checks code)</text>
+    <rect x="180" width="12" height="12" rx="3" fill="#0f7a5c"/><text x="200" y="11" class="leg">CD job (ships code)</text>
+    <rect x="350" width="12" height="12" rx="3" fill="#7a4bc2"/><text x="370" y="11" class="leg">Running on EC2</text>
+    <rect x="500" width="12" height="12" rx="3" fill="#b4231b"/><text x="520" y="11" class="leg">Gate: failure stops the pipeline</text>
+  </g>
+
+  <!-- Triggers -->
+  <rect x="100" y="160" width="460" height="80" rx="8" fill="#ffffff" stroke="#cfd6de" stroke-width="1.5"/>
+  <rect x="100" y="160" width="6" height="80" fill="#7b8794"/>
+  <text x="124" y="192" class="h">Pull request to main</text>
+  <text x="124" y="220" class="t">Runs the 2 CI jobs only. Nothing is built or deployed.</text>
+
+  <rect x="640" y="160" width="460" height="80" rx="8" fill="#ffffff" stroke="#cfd6de" stroke-width="1.5"/>
+  <rect x="640" y="160" width="6" height="80" fill="#7b8794"/>
+  <text x="664" y="192" class="h">Push / merge to main</text>
+  <text x="664" y="220" class="t">Runs all 4 jobs: CI → build images → deploy.</text>
+
+  <path d="M330,240 V262 H870 V240" fill="none" stroke="#7b8794" stroke-width="1.8"/>
+  <line x1="330" y1="262" x2="330" y2="296" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+  <line x1="870" y1="262" x2="870" y2="296" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+  <text x="600" y="284" text-anchor="middle" class="note">both jobs start in parallel</text>
+
+  <!-- Stage 1 -->
+  <text x="100" y="290" class="stage">STAGE 1 · CI CHECKS</text>
+  <rect x="100" y="300" width="460" height="170" rx="8" fill="#ffffff" stroke="#cfd6de" stroke-width="1.5"/>
+  <rect x="100" y="300" width="6" height="170" fill="#2459c7"/>
+  <text x="124" y="334" class="h">Lint and unit tests</text>
+  <text x="536" y="334" text-anchor="end" class="job" fill="#2459c7">quality</text>
+  <rect x="124" y="346" width="90" height="22" rx="11" fill="#e5ecfb"/><text x="169" y="361" text-anchor="middle" class="pill" fill="#2459c7">PR + push</text>
+  <text x="124" y="396" class="t">Node 22 on ubuntu-latest</text>
+  <text x="124" y="422" class="m">backend:  npm install → lint → test</text>
+  <text x="124" y="448" class="m">frontend: npm install → lint → test → build</text>
+
+  <rect x="640" y="300" width="460" height="170" rx="8" fill="#ffffff" stroke="#cfd6de" stroke-width="1.5"/>
+  <rect x="640" y="300" width="6" height="170" fill="#2459c7"/>
+  <text x="664" y="334" class="h">Repository scan</text>
+  <text x="1076" y="334" text-anchor="end" class="job" fill="#2459c7">trivy-repository</text>
+  <rect x="664" y="346" width="90" height="22" rx="11" fill="#e5ecfb"/><text x="709" y="361" text-anchor="middle" class="pill" fill="#2459c7">PR + push</text>
+  <text x="664" y="396" class="t">Trivy filesystem scan of the whole repo</text>
+  <text x="664" y="422" class="m">scanners: vuln, misconfig, secret</text>
+  <text x="664" y="448" class="t">Fails only on <tspan font-weight="700">CRITICAL</tspan> findings</text>
+
+  <path d="M330,470 V490 H870 V470" fill="none" stroke="#7b8794" stroke-width="1.8"/>
+  <line x1="600" y1="490" x2="600" y2="514" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+
+  <!-- Gate 1 -->
+  <rect x="330" y="518" width="540" height="34" rx="17" fill="#fbe7e5" stroke="#b4231b" stroke-width="1"/>
+  <text x="600" y="540" text-anchor="middle" class="gate">GATE 1 · lint error, test failure or CRITICAL repo finding</text>
+  <line x1="600" y1="552" x2="600" y2="626" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+  <text x="616" y="594" class="note">pull requests end here · only push to main continues</text>
+
+  <!-- Stage 2 -->
+  <text x="100" y="620" class="stage">STAGE 2 · BUILD AND PUBLISH</text>
+  <rect x="100" y="630" width="1000" height="200" rx="8" fill="#ffffff" stroke="#cfd6de" stroke-width="1.5"/>
+  <rect x="100" y="630" width="6" height="200" fill="#0f7a5c"/>
+  <text x="124" y="664" class="h">Build, scan and push images</text>
+  <text x="1076" y="664" text-anchor="end" class="job" fill="#0f7a5c">image-build-scan-push</text>
+  <rect x="124" y="676" width="150" height="22" rx="11" fill="#e1f3ec"/><text x="199" y="691" text-anchor="middle" class="pill" fill="#0f7a5c">push to main only</text>
+
+  <g>
+    <rect x="124" y="712" width="220" height="92" rx="6" fill="#f6f8fa" stroke="#cfd6de"/>
+    <text x="140" y="740" class="sh">1  Build</text>
+    <text x="140" y="764" class="m">docker build backend</text>
+    <text x="140" y="786" class="m">docker build frontend</text>
+
+    <rect x="364" y="712" width="220" height="92" rx="6" fill="#fbe7e5" stroke="#b4231b"/>
+    <text x="380" y="740" class="sh">2  Trivy image scan</text>
+    <text x="380" y="764" class="m">each image, CRITICAL only</text>
+    <text x="380" y="786" class="gate" font-size="13px">GATE 2 if it fails</text>
+
+    <rect x="604" y="712" width="220" height="92" rx="6" fill="#f6f8fa" stroke="#cfd6de"/>
+    <text x="620" y="740" class="sh">3  Docker Hub login</text>
+    <text x="620" y="764" class="m">DOCKERHUB_USERNAME</text>
+    <text x="620" y="786" class="m">DOCKERHUB_TOKEN</text>
+
+    <rect x="844" y="712" width="232" height="92" rx="6" fill="#f6f8fa" stroke="#cfd6de"/>
+    <text x="860" y="740" class="sh">4  Push (tag = commit SHA)</text>
+    <text x="860" y="764" class="m">USER/expense-backend:&lt;sha&gt;</text>
+    <text x="860" y="786" class="m">USER/expense-frontend:&lt;sha&gt;</text>
+
+    <line x1="344" y1="758" x2="360" y2="758" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+    <line x1="584" y1="758" x2="600" y2="758" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+    <line x1="824" y1="758" x2="840" y2="758" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+  </g>
+
+  <line x1="600" y1="830" x2="600" y2="852" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+  <rect x="330" y="856" width="540" height="34" rx="17" fill="#fbe7e5" stroke="#b4231b" stroke-width="1"/>
+  <text x="600" y="878" text-anchor="middle" class="gate">GATE 2 · build error or CRITICAL image CVE → nothing pushed</text>
+  <line x1="600" y1="890" x2="600" y2="936" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+
+  <!-- Stage 3 -->
+  <text x="100" y="930" class="stage">STAGE 3 · DEPLOY</text>
+  <rect x="100" y="940" width="1000" height="200" rx="8" fill="#ffffff" stroke="#cfd6de" stroke-width="1.5"/>
+  <rect x="100" y="940" width="6" height="200" fill="#0f7a5c"/>
+  <text x="124" y="974" class="h">Deploy to EC2</text>
+  <text x="1076" y="974" text-anchor="end" class="job" fill="#0f7a5c">deploy</text>
+  <rect x="124" y="986" width="150" height="22" rx="11" fill="#e1f3ec"/><text x="199" y="1001" text-anchor="middle" class="pill" fill="#0f7a5c">push to main only</text>
+  <text x="288" y="1002" class="note">environment: production · one deploy at a time</text>
+
+  <g>
+    <rect x="124" y="1022" width="176" height="92" rx="6" fill="#f6f8fa" stroke="#cfd6de"/>
+    <text x="138" y="1050" class="sh">1  SSH key</text>
+    <text x="138" y="1074" class="m">write EC2_SSH_KEY</text>
+    <text x="138" y="1096" class="m">to the runner</text>
+
+    <rect x="318" y="1022" width="176" height="92" rx="6" fill="#fbe7e5" stroke="#b4231b"/>
+    <text x="332" y="1050" class="sh">2  Verify server</text>
+    <text x="332" y="1074" class="m">ssh-keyscan must</text>
+    <text x="332" y="1096" class="m">match FINGERPRINT</text>
+
+    <rect x="512" y="1022" width="176" height="92" rx="6" fill="#f6f8fa" stroke="#cfd6de"/>
+    <text x="526" y="1050" class="sh">3  Copy compose</text>
+    <text x="526" y="1074" class="m">scp docker-compose</text>
+    <text x="526" y="1096" class="m">.prod.yml</text>
+
+    <rect x="706" y="1022" width="176" height="92" rx="6" fill="#f6f8fa" stroke="#cfd6de"/>
+    <text x="720" y="1050" class="sh">4  Pull + start</text>
+    <text x="720" y="1074" class="m">compose pull</text>
+    <text x="720" y="1096" class="m">up -d  (tag = sha)</text>
+
+    <rect x="900" y="1022" width="176" height="92" rx="6" fill="#fbe7e5" stroke="#b4231b"/>
+    <text x="914" y="1050" class="sh">5  Health check</text>
+    <text x="914" y="1074" class="m">curl /api/health</text>
+    <text x="914" y="1096" class="m">30 tries × 5 s</text>
+
+    <line x1="300" y1="1068" x2="314" y2="1068" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+    <line x1="494" y1="1068" x2="508" y2="1068" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+    <line x1="688" y1="1068" x2="702" y2="1068" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+    <line x1="882" y1="1068" x2="896" y2="1068" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+  </g>
+
+  <line x1="600" y1="1140" x2="600" y2="1162" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+  <rect x="330" y="1166" width="540" height="34" rx="17" fill="#fbe7e5" stroke="#b4231b" stroke-width="1"/>
+  <text x="600" y="1188" text-anchor="middle" class="gate">GATE 3 · SSH failure or health check fails (no auto-rollback)</text>
+  <line x1="600" y1="1200" x2="600" y2="1262" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+  <text x="616" y="1238" class="note">health check passes → new version is live</text>
+
+  <!-- Runtime -->
+  <text x="100" y="1256" class="stage">RUNNING ON EC2</text>
+  <rect x="250" y="1268" width="900" height="220" rx="12" fill="#efe7fa" stroke="#7a4bc2" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <text x="272" y="1296" class="m" fill="#7a4bc2" style="fill:#7a4bc2">docker network: expense-net · only port 80 is public</text>
+
+  <rect x="40" y="1340" width="170" height="84" rx="8" fill="#ffffff" stroke="#cfd6de" stroke-width="1.5"/>
+  <text x="125" y="1374" text-anchor="middle" class="h">Browser</text>
+  <text x="125" y="1400" text-anchor="middle" class="m">http://EC2_IP</text>
+
+  <rect x="290" y="1320" width="230" height="110" rx="8" fill="#ffffff" stroke="#7a4bc2" stroke-width="1.5"/>
+  <text x="405" y="1354" text-anchor="middle" class="h">frontend</text>
+  <text x="405" y="1380" text-anchor="middle" class="m">Nginx + React build</text>
+  <text x="405" y="1404" text-anchor="middle" class="m">port 80 (public)</text>
+
+  <rect x="590" y="1320" width="230" height="110" rx="8" fill="#ffffff" stroke="#7a4bc2" stroke-width="1.5"/>
+  <text x="705" y="1354" text-anchor="middle" class="h">backend</text>
+  <text x="705" y="1380" text-anchor="middle" class="m">Node.js / Express</text>
+  <text x="705" y="1404" text-anchor="middle" class="m">port 5000 (internal)</text>
+
+  <rect x="890" y="1320" width="230" height="110" rx="8" fill="#ffffff" stroke="#7a4bc2" stroke-width="1.5"/>
+  <text x="1005" y="1354" text-anchor="middle" class="h">mongo</text>
+  <text x="1005" y="1380" text-anchor="middle" class="m">mongo:7</text>
+  <text x="1005" y="1404" text-anchor="middle" class="m">port 27017 (internal)</text>
+
+  <line x1="1005" y1="1430" x2="1005" y2="1450" stroke="#7b8794" stroke-width="1.5"/>
+  <rect x="930" y="1450" width="150" height="26" rx="13" fill="#ffffff" stroke="#cfd6de"/>
+  <text x="1005" y="1468" text-anchor="middle" class="m">volume: mongo-data</text>
+
+  <line x1="210" y1="1382" x2="286" y2="1382" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+  <line x1="520" y1="1375" x2="586" y2="1375" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+  <text x="553" y="1366" text-anchor="middle" class="m">/api/</text>
+  <line x1="820" y1="1375" x2="886" y2="1375" stroke="#7b8794" stroke-width="1.8" marker-end="url(#ah)"/>
+
+  <text x="100" y="1506" class="leg">Images on EC2 are pulled from Docker Hub by commit SHA. MongoDB data survives redeploys in the mongo-data volume.</text>
+</svg>
