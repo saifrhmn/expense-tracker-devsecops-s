@@ -10,7 +10,7 @@ jobs:
   quality:
     name: Lint and unit tests
     runs-on: ubuntu-latest
-    steps:
+    steps: 
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -52,6 +52,7 @@ jobs:
     needs: [quality, trivy-repository]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: production  # ADD THIS LINE
     steps:
       - uses: actions/checkout@v4
       - name: Build backend image
@@ -59,7 +60,7 @@ jobs:
       - name: Build frontend image
         run: docker build -t expense-frontend:ci ./frontend
       - name: Trivy backend image - CRITICAL only
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: expense-backend:ci
           scanners: vuln
@@ -67,7 +68,7 @@ jobs:
           exit-code: '1'
           format: table
       - name: Trivy frontend image - CRITICAL only
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: expense-frontend:ci
           scanners: vuln
@@ -77,8 +78,8 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+            username: ${{ vars.DOCKERHUB_USERNAME }}
+            password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Tag and push immutable commit images
         env:
           HUB_USER: ${{ vars.DOCKERHUB_USERNAME }}
